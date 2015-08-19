@@ -1,17 +1,19 @@
-# manta2midi for MaxMSP
+# mantamidi for MaxMSP
 
 This patch is still very much a work in progress.
 
-Inspired by [Vlad Spear's Honeycomb][honeycomb], manta2midi fills
+Inspired by [Vlad Spear's Honeycomb][honeycomb], mantamidi fills
 a similar of converting data from the [Snyderphonics Manta][manta] to
 MIDI, but brings usage of the [newer 1.04b `manta` Max object][mantamax]
 and provides reconfigurability.
 
 Requires both a Manta and the newer Manta Max/MSP object.
+Also works with [MantaOSC][manta-osc] application via the `mantaoscmidi` wrapper.
 
 [honeycomb]: http://vladspears.com/post/honeycomb.html
 [manta]: http://snyderphonics.com/products.htm
 [mantamax]: http://snyderphonics.com/downloads.htm
+[manta-osc]: http://www.genekogan.com/works/manta.html
 
 ## Features
 
@@ -69,4 +71,11 @@ exist to optionally provide behavior similar to Honeycomb.  The buttons
   - `[off, on]`:  CC 25
   - `[on, on]`:   CC 26
 
+## Details
 
+The bulk of the object is implemented via the `js` object in JavaScript, which
+is transpiled from [sibilant][] to JS. You'll need `base.sibilant` from my
+[maxlib] library. in a directory parallel to this one in order to compile the
+javascript.
+
+[sibilant]: http://sibilantjs.info/

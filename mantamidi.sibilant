@@ -1,0 +1,129 @@
+(include "../maxlib/base")
+
+(set this "autowatch" 1)
+(post "mattly.mantamidi\n")
+
+(var in-vel 0
+     in-cont 1
+     in-slide 2)
+(set this "inlets" 3)
+(setinletassist in-vel "Pad/Button Velocity")
+(setinletassist in-cont "Pad/Button Continuous")
+(setinletassist in-slide "Sliders")
+
+(var out-note 0
+     out-poly 1
+     out-cc 2
+     out-touch 3
+     out-manta 4)
+(set this "outlets" 5)
+(setoutletassist out-note "Note Out")
+(setoutletassist out-poly "PolyKey Pressure Out")
+(setoutletassist out-cc "Control Out")
+(setoutletassist out-touch "Aftertouch Out")
+
+(var initializing 1
+     row-val 5
+     col-val 2
+     base 48
+     holds (new Array 128)
+     pads (new Array 48)
+     slider-pos [0 0 0 0 0 0 0 0]
+     slider-maps [1 20 21 22 23 24 25 26]
+     sliders [0 4]
+     button-pos [0 0 0 0])
+
+(def notes-for-pads ()
+     (var idx 0)
+     (while (< idx 48)
+            (do
+             (var y (Math.floor (/ idx 8))
+                  x (- (mod idx 8) (Math.floor (/ y 2)))
+                  note (+ base (* y row-val) (* x col-val)))
+             (set pads idx note)
+             (assign idx (+ 1 idx)))))
+(notes-for-pads)
+
+(assign initializing 0)
+
+(def startnote (val)
+     (if val
+         (do
+          (assign base val)
+          (notes-for-pads))))
+
+(def col (new-col)
+     (assign col-val new-col)
+     (notes-for-pads))
+(def row (new-row)
+     (assign row-val new-row)
+     (notes-for-pads))
+
+(def amber-or-off (val)
+     (if (> val 0) 1 0))
+
+(def -pad-vel (note velocity)
+     (set holds note (/ velocity 127))
+     (var pad-lit (amber-or-off velocity))
+     (outlet out-note note velocity)
+     (var lit-pads (fold [] pads (lambda (coll pn p)
+                                         (when (= pn note) (coll.push p))
+                                         coll)))
+     (each (pad) lit-pads
+           (outlet out-manta "pad" pad pad-lit)))
+
+(def -pad-cont (note velocity)
+     (var pressure (/ velocity 211))
+     (set holds note pressure)
+     (outlet out-poly (Math.floor (* pressure 128)) note)
+     (var non-zeroes (holds.filter (#(i) i)))
+     (unless (empty? non-zeroes)
+             (outlet out-touch (Math.floor (* (median non-zeroes) 128)))))
+
+(def pad (pad velocity)
+     (var note (get pads pad))
+     (switch inlet
+             (in-vel (-pad-vel note velocity))
+             (in-cont (-pad-cont note velocity))))
+
+(def -button-vel (number velocity)
+     (when (> velocity 0)
+           (do 
+            (var new-val (mod (+ 1 (get button-pos number)) 2))
+            (set button-pos number new-val)
+            (outlet out-manta "button" number new-val)
+            (if (< number 2)
+                (do 
+                 (var virtualslider (+ (get button-pos 0) (* 2 (get button-pos 1))))
+                 (set sliders 0 virtualslider)
+                 (post "setting slider 0 to " virtualslider)
+                 (outlet out-manta "slider" 0
+                         (Math.floor (* 8 (get slider-pos virtualslider)))))
+                (do
+                 (var virtualslider (+ 4 (get button-pos 2) (* 2 (get button-pos 3))))
+                 (set sliders 1 virtualslider)
+                 (post "setting slider 1 to " virtualslider)
+                 (outlet out-manta "slider" 1
+                         (Math.floor (* 8 (get slider-pos virtualslider)))))))))
+
+(def -button-cont (number velocity)
+     ;; no-op
+     "")
+
+(def button (number velocity)
+     (switch inlet
+             (in-vel (-button-vel number velocity))
+             (in-cont (-button-cont number velocity))))
+
+(def slider (number value)
+     (when (> value -1)
+           (do 
+            (var virtualslider (get sliders number))
+            (var val (/ value 4096))
+            (set slider-pos virtualslider val)
+            (outlet out-cc (get slider-maps virtualslider) (Math.floor (* 128 val)))
+            (outlet out-manta "slider" number (Math.floor (* 8 val))))))
+
+(def list (...args)
+     (switch inlet
+             (in-slide (apply slider args))))
