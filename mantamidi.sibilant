@@ -25,6 +25,9 @@
 (var initializing 1
      row-val 5
      col-val 2
+     isomorphic true
+     row-dist 3
+     col-scale [0 2 4 5 7 9 11 12]
      base 48
      holds (new Array 128)
      pads (new Array 48)
@@ -38,8 +41,19 @@
      (while (< idx 48)
             (do
              (var y (Math.floor (/ idx 8))
-                  x (- (mod idx 8) (Math.floor (/ y 2)))
-                  note (+ base (* y row-val) (* x col-val)))
+                  x (mod idx 8)
+                  note (if isomorphic
+                           (+ base
+                              (* y row-val)
+                              (* (- x (Math.floor (/ y 2))) col-val))
+                           (do (var n (+ x (* y row-dist)))
+                               (+ base
+                                  (* 12 (Math.floor (/ n col-scale.length)))
+                                  (get col-scale (mod n col-scale.length))))))
+             (post "setting" y x note
+                   "octave" (Math.floor (/ idx col-scale.length))
+                   "position" (mod idx col-scale.length) (get col-scale (mod idx col-scale.length))
+                   "\n")
              (set pads idx note)
              (assign idx (+ 1 idx)))))
 (notes-for-pads)
@@ -53,10 +67,24 @@
           (notes-for-pads))))
 
 (def col (new-col)
-     (assign col-val new-col)
+     (assign isomorphic true)
+     (assign col-val scale)
      (notes-for-pads))
+
 (def row (new-row)
+     (assign isomorphic true)
      (assign row-val new-row)
+     (notes-for-pads))
+
+(def scale (...new-cols)
+     (assign isomorphic false)
+     (var base-scale [0])
+     (assign new-cols (base-scale.concat new-cols))
+     (assign col-scale new-cols)
+     (notes-for-pads))
+
+(def scale-row (new-row)
+     (assign row-dist new-row)
      (notes-for-pads))
 
 (def amber-or-off (val)

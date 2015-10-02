@@ -10,6 +10,12 @@ var fold = (function(start, items, fn) {
   return value;
 });
 
+var map = (function(items, fn) {
+  return fold([], items, (function(coll, item) {
+    return coll.concat(fn(item));
+  }));
+});
+
 var plus = (function(list) {
   var list = Array.prototype.slice.call(arguments, 0);
   
@@ -17,7 +23,9 @@ var plus = (function(list) {
 });
 
 var sum = (function(list) {
-  return fold(0, list, plus);
+  return fold(0, list, (function(x, y) {
+    return (x + y);
+  }));
 });
 
 var median = (function(list) {
@@ -55,6 +63,9 @@ setoutletassist(outTouch, "Aftertouch Out");
 var initializing = 1,
     rowVal = 5,
     colVal = 2,
+    isomorphic = true,
+    rowDist = 3,
+    colScale = [ 0, 2, 4, 5, 7, 9, 11, 12 ],
     base = 48,
     holds = (new Array(128)),
     pads = (new Array(48)),
@@ -69,8 +80,16 @@ var notesForPads = (function() {
     while ((idx < 48)) {
       __returnValue__ = (function() {
         var y = Math.floor((idx / 8)),
-            x = ((idx % 8) - Math.floor((y / 2))),
-            note = (base + (y * rowVal) + (x * colVal));
+            x = (idx % 8),
+            note = (function() {
+          if (isomorphic) {
+            return (base + (y * rowVal) + ((x - Math.floor((y / 2))) * colVal));
+          } else {
+            var n = (x + (y * rowDist));
+            return (base + (12 * Math.floor((n / colScale.length))) + (colScale)[(n % colScale.length)]);
+          }
+        })();
+        post("setting", y, x, note, "octave", Math.floor((idx / colScale.length)), "position", (idx % colScale.length), (colScale)[(idx % colScale.length)], "\n");
         (pads)[idx] = note;
         return idx = (1 + idx);
       })();
@@ -94,12 +113,29 @@ var startnote = (function(val) {
 });
 
 var col = (function(newCol) {
-  colVal = newCol;
+  isomorphic = true;
+  colVal = scale;
   return notesForPads();
 });
 
 var row = (function(newRow) {
+  isomorphic = true;
   rowVal = newRow;
+  return notesForPads();
+});
+
+var scale = (function(newCols) {
+  var newCols = Array.prototype.slice.call(arguments, 0);
+  
+  isomorphic = false;
+  var baseScale = [ 0 ];
+  newCols = baseScale.concat(newCols);
+  colScale = newCols;
+  return notesForPads();
+});
+
+var scaleRow = (function(newRow) {
+  rowDist = newRow;
   return notesForPads();
 });
 
